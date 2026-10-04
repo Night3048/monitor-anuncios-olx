@@ -1,0 +1,11 @@
+# Bytecode e dados de execução do Python.
+__pycache__/
+*.py[cod]
+.preview-data/
+
+# Artefactos locais de compilação: recriam-se com build_windows.ps1.
+.buildenv/
+.build-temp*/
+build/
+dist/
+procurador/build_info.py

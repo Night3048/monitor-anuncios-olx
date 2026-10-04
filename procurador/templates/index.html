@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f7fb">
+    <title>Procurador de Anúncios</title>
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  </head>
+  <body>
+    <div class="shell">
+      <!-- Cabeçalho da aplicação e ação para encerrar o serviço local. -->
+      <header class="topbar">
+        <a class="brand" href="/">
+          <span class="brand-mark">P</span>
+          <span>Procurador<small>de anúncios</small></span>
+        </a>
+        <div class="top-meta">
+          <span class="connection-dot"></span>
+          A funcionar neste computador
+          <span class="version">v{{ version }}</span>
+          <button class="theme-toggle" id="theme-toggle" type="button"
+                  aria-label="Ativar modo escuro" aria-pressed="false" title="Ativar modo escuro">
+            <span class="theme-toggle-sun" aria-hidden="true">☀</span>
+            <span class="theme-toggle-moon" aria-hidden="true">☾</span>
+            <span class="theme-toggle-thumb" aria-hidden="true"></span>
+            <span class="theme-toggle-label">Modo escuro</span>
+          </button>
+          <form method="post" action="{{ url_for('exit_app') }}">
+            <button class="text-action" title="Fechar aplicação">Sair</button>
+          </form>
+        </div>
+      </header>
+
+      <main>
+        <!-- Introdução: explica em linguagem simples para que serve o painel. -->
+        <section class="welcome">
+          <div>
+            <p class="eyebrow">O teu radar de oportunidades</p>
+            <h1>Encontra o que procuras.<br><span>O Discord avisa-te.</span></h1>
+            <p class="intro">
+              Acompanha novos anúncios na OLX e no Wallapop sem teres de pesquisar à mão.
+            </p>
+          </div>
+          <div class="welcome-art" aria-hidden="true">
+            <span class="art-ring ring-one"></span>
+            <span class="art-ring ring-two"></span>
+            <span class="art-icon">⌕</span>
+            <span class="art-spark">✦</span>
+          </div>
+        </section>
+
+        <!-- Mensagens de resultado das ações, preparadas pelo servidor Flask. -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="notices">
+              {% for category, message in messages %}
+                <div class="notice {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <!-- Estado global do monitor e atalhos para controlar as verificações. -->
+        <section class="status-card panel">
+          <div class="status-main">
+            <span class="status-icon">
+              {% if cfg.master_enabled and cfg.discord_webhook %}✓{% else %}Ⅱ{% endif %}
+            </span>
+            <div>
+              <strong id="monitor-state">
+                {% if not cfg.discord_webhook %}
+                  Discord por configurar
+                {% elif cfg.master_enabled %}
+                  Monitorização ativa
+                {% else %}
+                  Monitorização em pausa
+                {% endif %}
+              </strong>
+              <p id="monitor-message">{{ status.message }}</p>
+            </div>
+          </div>
+          <div class="status-actions">
+            <span class="subtle">
+              Verifica de {{ cfg.interval_seconds // 60 }} em {{ cfg.interval_seconds // 60 }} min
+            </span>
+            <form method="post" action="{{ url_for('manual_check') }}">
+              <button class="button button-light" type="submit">Verificar agora</button>
+            </form>
+            <form method="post" action="{{ url_for('toggle_monitor') }}">
+              <button class="button {% if cfg.master_enabled %}button-quiet{% else %}button-primary{% endif %}" type="submit">
+                {% if cfg.master_enabled %}Pausar{% else %}Retomar{% endif %}
+              </button>
+            </form>
+          </div>
+        </section>
+
+        <!-- O JavaScript só mostra esta faixa quando existe uma release nova. -->
+        <div id="update-banner" class="update-banner" hidden>
+          <span>✨ <b id="update-message"></b></span>
+          <button id="update-install" class="button button-primary">Atualizar agora</button>
+        </div>
+        <div id="update-note" class="update-note" hidden></div>
+
+        <div class="content-grid">
+          <!-- Lista das pesquisas e operações individuais. -->
+          <section class="panel searches-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">As tuas pesquisas</p>
+                <h2>A acompanhar <span class="count">{{ cfg.searches|length }}</span></h2>
+              </div>
+            </div>
+
+            {% if not cfg.searches %}
+              <div class="empty-state">
+                <span class="empty-icon">⌕</span>
+                <h3>Ainda não tens pesquisas</h3>
+                <p>Cria a primeira pesquisa ao lado e deixa o radar ligado.</p>
+              </div>
+            {% else %}
+              <div class="search-list">
+                {% for search in cfg.searches %}
+                  <article class="search-card">
+                    <div class="search-top">
+                      <div class="site-badge {{ search.site }}">
+                        {% if search.site == 'olx' %}OLX{% else %}W{% endif %}
+                      </div>
+                      <div class="search-title">
+                        <h3>{{ search.name }}</h3>
+                        <span class="keyword">“{{ search.keyword }}”</span>
+                      </div>
+                      <span class="pill {% if search.enabled %}pill-on{% else %}pill-off{% endif %}">
+                        {% if search.enabled %}Ativa{% else %}Pausada{% endif %}
+                      </span>
+                    </div>
+
+                    <div class="search-details">
+                      {% if search.min_price is not none or search.max_price is not none %}
+                        <span>
+                          € {% if search.min_price is not none %}{{ search.min_price }}{% else %}0{% endif %}
+                          –{% if search.max_price is not none %}{{ search.max_price }}{% else %}sem limite{% endif %}
+                        </span>
+                      {% else %}
+                        <span>Qualquer preço</span>
+                      {% endif %}
+                      {% if search.center_location and search.radius_km %}
+                        <span>{{ search.radius_km }} km de {{ search.center_location }}</span>
+                      {% endif %}
+                      {% if search.exclude_keywords %}
+                        <span>Exclui: {{ search.exclude_keywords|join(', ') }}</span>
+                      {% endif %}
+                    </div>
+
+                    <div class="search-footer">
+                      <span class="subtle">
+                        {% if search.last_checked %}
+                          Verificada {{ search.last_checked }}
+                        {% else %}
+                          A aguardar primeira verificação
+                        {% endif %}
+                      </span>
+                      <div class="item-actions">
+                        <a class="text-action" href="{{ url_for('edit_search', search_id=search.id) }}">Editar</a>
+                        <form method="post" action="{{ url_for('toggle_search', search_id=search.id) }}">
+                          <button class="text-action" type="submit">
+                            {% if search.enabled %}Pausar{% else %}Ativar{% endif %}
+                          </button>
+                        </form>
+                        <form method="post"
+                              action="{{ url_for('delete_search', search_id=search.id) }}"
+                              onsubmit="return confirm('Queres mesmo remover esta pesquisa?')">
+                          <button class="text-action danger-text" type="submit">Remover</button>
+                        </form>
+                      </div>
+                    </div>
+                  </article>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </section>
+
+          <!-- Formulário para criar uma pesquisa e definir filtros opcionais. -->
+          <aside class="side-column">
+            <section class="panel form-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Começa em segundos</p>
+                  <h2>Nova pesquisa</h2>
+                </div>
+                <span class="step-number">01</span>
+              </div>
+
+              <form method="post" action="{{ url_for('add_search') }}" class="stack-form">
+                <label>Como lhe queres chamar?
+                  <input name="name" placeholder="Ex.: Bicicleta de montanha" required maxlength="60">
+                </label>
+                <label>O que procurar?
+                  <input name="keyword" placeholder="Ex.: bicicleta montanha" required maxlength="120">
+                </label>
+                <label>Onde procurar?
+                  <select name="site">
+                    <option value="olx">OLX</option>
+                    <option value="wallapop">Wallapop</option>
+                  </select>
+                </label>
+
+                <div class="field-row">
+                  <label>Preço mínimo (€)
+                    <input type="number" name="min_price" min="0" placeholder="Sem mínimo">
+                  </label>
+                  <label>Preço máximo (€)
+                    <input type="number" name="max_price" min="0" placeholder="Sem máximo">
+                  </label>
+                </div>
+
+                <details>
+                  <summary>Mais opções <span>+</span></summary>
+                  <div class="details-content">
+                    <label>Palavras a excluir
+                      <input name="exclude_keywords" placeholder="Ex.: para peças, avariado">
+                      <small>Separa várias palavras com vírgulas.</small>
+                    </label>
+                    <label>Localização central
+                      <input name="center_location" placeholder="Ex.: Coimbra">
+                    </label>
+                    <label>Distância máxima (km)
+                      <input type="number" name="radius_km" min="1" placeholder="Ex.: 50">
+                    </label>
+                  </div>
+                </details>
+
+                <button class="button button-primary button-wide" type="submit">
+                  Adicionar pesquisa <span>→</span>
+                </button>
+              </form>
+            </section>
+
+            <!-- Webhook e frequência ficam juntos porque ambos afetam alertas. -->
+            <section class="panel settings-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Recebe alertas</p>
+                  <h2>Discord</h2>
+                </div>
+                <span class="discord-mark">◉</span>
+              </div>
+              <p class="helper">
+                Cria um webhook nas definições do teu servidor Discord e cola aqui o respetivo URL.
+              </p>
+
+              <form method="post" action="{{ url_for('save_settings') }}" class="stack-form">
+                <label>URL do webhook
+                  <input type="password" name="webhook"
+                         placeholder="https://discord.com/api/webhooks/…"
+                         value="{{ cfg.discord_webhook }}" autocomplete="off">
+                  <small>Fica guardado apenas neste computador.</small>
+                </label>
+                <label>Frequência de verificação
+                  <select name="interval">
+                    {% for seconds, label in [(60, '1 minuto'), (300, '5 minutos'), (600, '10 minutos'), (1800, '30 minutos'), (3600, '1 hora')] %}
+                      <option value="{{ seconds }}" {% if cfg.interval_seconds == seconds %}selected{% endif %}>
+                        {{ label }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <button class="button button-light button-wide" type="submit">Guardar definições</button>
+              </form>
+            </section>
+          </aside>
+        </div>
+
+        <!-- Erros de sites são apresentados sem interromper o restante painel. -->
+        <section id="error-panel" class="error-panel" hidden>
+          <strong>Algumas pesquisas precisam de atenção</strong>
+          <ul id="error-list"></ul>
+          <p>Um erro 403 indica que a OLX recusou o acesso automático. Uma atualização pode ajudar com alterações do site, mas não garante a remoção desse bloqueio.</p>
+        </section>
+
+        <section class="help-strip">
+          <span class="help-symbol">i</span>
+          <p>
+            <strong>Para continuar a receber alertas</strong><br>
+            Deixa este computador ligado e com a aplicação aberta. As notificações chegam ao Discord mesmo quando estás no telemóvel.
+          </p>
+          <a href="https://support.discord.com/hc/pt-br/articles/228383668-Introdu%C3%A7%C3%A3o-aos-Webhooks"
+             target="_blank" rel="noreferrer">Ajuda com o Discord ↗</a>
+        </section>
+      </main>
+
+      <footer>Procurador de Anúncios <span>·</span> Os teus dados ficam neste computador.</footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>

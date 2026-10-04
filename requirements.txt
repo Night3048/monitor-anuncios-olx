@@ -1,0 +1,12 @@
+# Servidor HTTP local que apresenta os templates da pasta procurador/templates.
+Flask>=3.0,<4.0
+# Cliente HTTP usado pela OLX, Nominatim, Discord e GitHub Releases.
+requests>=2.31,<3.0
+# Leitura dos cartões de anúncio no HTML público da OLX.
+beautifulsoup4>=4.12,<5.0
+# Cliente usado para pesquisar anúncios no Wallapop.
+wallapy
+# Dependência transitiva usada pelo cliente Wallapop para comparar texto.
+fuzzywuzzy>=0.18,<1.0
+# Ferramenta de desenvolvimento; não é necessária no computador do utilizador.
+pyinstaller>=6.0

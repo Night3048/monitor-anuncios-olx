@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Editar pesquisa · Procurador</title>
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/">
+          <span class="brand-mark">P</span>
+          <span>Procurador<small>de anúncios</small></span>
+        </a>
+        <div class="edit-header-actions">
+          <button class="theme-toggle" id="theme-toggle" type="button"
+                  aria-label="Ativar modo escuro" aria-pressed="false" title="Ativar modo escuro">
+            <span class="theme-toggle-sun" aria-hidden="true">☀</span>
+            <span class="theme-toggle-moon" aria-hidden="true">☾</span>
+            <span class="theme-toggle-thumb" aria-hidden="true"></span>
+            <span class="theme-toggle-label">Modo escuro</span>
+          </button>
+          <a class="text-action" href="/">← Voltar</a>
+        </div>
+      </header>
+
+      <main class="edit-main">
+        <section class="panel form-panel">
+          <p class="eyebrow">Ajustar detalhes</p>
+          <h1>Editar pesquisa</h1>
+
+          <!-- Os valores são preenchidos pelo servidor a partir da pesquisa selecionada. -->
+          <form method="post" class="stack-form">
+            <label>Nome
+              <input name="name" value="{{ search.name }}" required maxlength="60">
+            </label>
+            <label>Palavra-chave
+              <input name="keyword" value="{{ search.keyword }}" required maxlength="120">
+            </label>
+            <label>Onde procurar?
+              <select name="site">
+                <option value="olx" {% if search.site == 'olx' %}selected{% endif %}>OLX</option>
+                <option value="wallapop" {% if search.site == 'wallapop' %}selected{% endif %}>Wallapop</option>
+              </select>
+            </label>
+
+            <div class="field-row">
+              <label>Preço mínimo (€)
+                <input type="number" name="min_price" min="0"
+                       value="{{ search.min_price if search.min_price is not none else '' }}">
+              </label>
+              <label>Preço máximo (€)
+                <input type="number" name="max_price" min="0"
+                       value="{{ search.max_price if search.max_price is not none else '' }}">
+              </label>
+            </div>
+
+            <label>Palavras a excluir
+              <small>Separa várias palavras com vírgulas.</small>
+              <input name="exclude_keywords" value="{{ search.exclude_keywords|join(', ') }}">
+            </label>
+            <label>Localização central
+              <input name="center_location" value="{{ search.center_location or '' }}">
+            </label>
+            <label>Distância máxima (km)
+              <input type="number" name="radius_km" min="1"
+                     value="{{ search.radius_km if search.radius_km else '' }}">
+            </label>
+
+            <button class="button button-primary button-wide" type="submit">Guardar alterações</button>
+          </form>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
