@@ -1,0 +1,6 @@
+{
+  "discord_webhook": "",
+  "interval_seconds": 300,
+  "master_enabled": true,
+  "searches": []
+}
